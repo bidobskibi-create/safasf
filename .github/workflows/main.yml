@@ -1,13 +1,55 @@
-name: build
-on: [push, workflow_dispatch]
+
+name: SwipeNav Build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  b:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: 17}
-      - run: sdkmanager "platforms;android-19" "build-tools;34.0.0" >/dev/null || true
-      - run: ANDROID_HOME=$ANDROID_HOME bash build.sh
-      - uses: actions/upload-artifact@v4
-        with: {name: SwipeNav-flash, path: out/SwipeNav-flash.zip}
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android tools
+        run: sdkmanager --install "platforms;android-19" "build-tools;34.0.0"
+
+      - name: Build SwipeNav
+        shell: bash
+        run: |
+          if [ -f build.sh ]; then
+            bash ./build.sh
+          elif [ -f SwipeNav/build.sh ]; then
+            cd SwipeNav
+            bash ./build.sh
+          else
+            echo "ERROR: Cannot find build.sh"
+            exit 1
+          fi
+
+      - name: Verify ZIP
+        run: |
+          test -s out/SwipeNav-flash.zip || test -s SwipeNav/out/SwipeNav-flash.zip
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: SwipeNav-flash
+          path: |
+            out/SwipeNav-flash.zip
+            SwipeNav/out/SwipeNav-flash.zip
+          if-no-files-found: error
