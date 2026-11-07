@@ -1,9 +1,7 @@
 
 name: SwipeNav Build
 
-on:
-  push:
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 permissions:
   contents: read
@@ -28,28 +26,35 @@ jobs:
       - name: Install Android tools
         run: sdkmanager --install "platforms;android-19" "build-tools;34.0.0"
 
-      - name: Build SwipeNav
+      - name: Find and build SwipeNav
+        id: build
         shell: bash
         run: |
-          if [ -f build.sh ]; then
-            bash ./build.sh
-          elif [ -f SwipeNav/build.sh ]; then
-            cd SwipeNav
-            bash ./build.sh
-          else
-            echo "ERROR: Cannot find build.sh"
+          set -euo pipefail
+
+          BUILD_SCRIPT=$(find . -type f -name build.sh -not -path '*/.git/*' -print -quit)
+
+          if [ -z "$BUILD_SCRIPT" ]; then
+            echo "ERROR: build.sh not found!"
+            echo "Repository files:"
+            find . -maxdepth 5 -type f | sort | head -200
             exit 1
           fi
 
-      - name: Verify ZIP
-        run: |
-          test -s out/SwipeNav-flash.zip || test -s SwipeNav/out/SwipeNav-flash.zip
+          PROJECT_DIR=$(dirname "$BUILD_SCRIPT")
+          echo "Found SwipeNav in: $PROJECT_DIR"
 
-      - name: Upload ZIP
+          cd "$PROJECT_DIR"
+          bash ./build.sh
+
+          OUTPUT="$PROJECT_DIR/out/SwipeNav-flash.zip"
+          test -s "$OUTPUT"
+
+          echo "artifact_path=$OUTPUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload SwipeNav
         uses: actions/upload-artifact@v7
         with:
           name: SwipeNav-flash
-          path: |
-            out/SwipeNav-flash.zip
-            SwipeNav/out/SwipeNav-flash.zip
+          path: ${{ steps.build.outputs.artifact_path }}
           if-no-files-found: error
