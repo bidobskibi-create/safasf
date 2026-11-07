@@ -1,0 +1,13 @@
+name: build
+on: [push, workflow_dispatch]
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17}
+      - run: sdkmanager "platforms;android-19" "build-tools;34.0.0" >/dev/null || true
+      - run: ANDROID_HOME=$ANDROID_HOME bash build.sh
+      - uses: actions/upload-artifact@v4
+        with: {name: SwipeNav-flash, path: out/SwipeNav-flash.zip}
