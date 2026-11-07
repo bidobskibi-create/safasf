@@ -32,29 +32,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          BUILD_SCRIPT=$(find . -type f -name build.sh -not -path '*/.git/*' -print -quit)
+          BUILD_SCRIPT=$(find "$GITHUB_WORKSPACE" -type f -name build.sh -not -path '*/.git/*' -print -quit)
 
           if [ -z "$BUILD_SCRIPT" ]; then
-            echo "ERROR: build.sh not found!"
-            echo "Repository files:"
-            find . -maxdepth 5 -type f | sort | head -200
+            echo "ERROR: build.sh not found"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$BUILD_SCRIPT")
-          echo "Found SwipeNav in: $PROJECT_DIR"
+          PROJECT_DIR="$(cd "$(dirname "$BUILD_SCRIPT")" && pwd)"
+
+          echo "Project directory: $PROJECT_DIR"
 
           cd "$PROJECT_DIR"
           bash ./build.sh
 
           OUTPUT="$PROJECT_DIR/out/SwipeNav-flash.zip"
-          test -s "$OUTPUT"
+
+          if [ ! -s "$OUTPUT" ]; then
+            echo "ERROR: Build did not create the ZIP"
+            exit 1
+          fi
 
           echo "artifact_path=$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "BUILD SUCCESSFUL!"
 
-      - name: Upload SwipeNav
+      - name: Upload ZIP
         uses: actions/upload-artifact@v7
         with:
           name: SwipeNav-flash
           path: ${{ steps.build.outputs.artifact_path }}
           if-no-files-found: error
+
